@@ -1,4 +1,5 @@
 const fetch = require('node-fetch')
+
 const sentenceBoundaryDetection = require('sbd')
 
 const watsonApiKey = require('../credentials/watson-nlu.json').apikey
