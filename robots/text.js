@@ -4,54 +4,39 @@ const sentenceBoundaryDetection = require('sbd')
 
 const watsonApiKey = require('../credentials/watson-nlu.json').apikey
 const NaturalLanguageUnderstandingV1 = require('watson-developer-cloud/natural-language-understanding/v1.js')
- 
-var nlu = new NaturalLanguageUnderstandingV1({
+
+const nlu = new NaturalLanguageUnderstandingV1({
   iam_apikey: watsonApiKey,
   version: '2018-04-05',
   url: 'https://gateway.watsonplatform.net/natural-language-understanding/api/'
 })
 
-async function robot(content) {
-  await getWikipediaTitleContent(content)
+const state = require('./state.js')
+
+async function robot() {
+  const content = state.load()
+
   await fetchContentFromWikipedia(content)
   sanitizeContent(content)
   breakContentIntoSentences(content)
   limitMaximumSentences(content)
   await fetchKeywordsOfAllSentences(content)
 
-  async function getWikipediaTitleContent(content) {
-    try {
-        const response = await fetch( `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(content.searchTerm)}&utf8=&format=json`)
-        const wikipediaRawTitles = await response.json()
-
-        const wikipediaTitles = wikipediaRawTitles.query.search
-
-        const arrayTitles = []
-
-        for (let x in wikipediaTitles) {
-            await arrayTitles.push(wikipediaTitles[x].title)
-        }
-
-        content.titlePrefixes = arrayTitles
-
-    } catch (error) {
-        console.log(error)
-    }
-}
+  state.save(content)
 
   async function fetchContentFromWikipedia(content) {
     try {
-        const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=true&explaintext&titles=${encodeURIComponent(content.selectedTerm)}&format=json`)
-        const wikipediaRawResponse = await response.json()
+      const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=true&explaintext&titles=${encodeURIComponent(content.searchTerm)}&format=json`)
+      const wikipediaRawResponse = await response.json()
 
-        const wikipediaRawContent = wikipediaRawResponse.query.pages
+      const wikipediaRawContent = wikipediaRawResponse.query.pages
 
-        Object.keys(wikipediaRawContent).forEach((key) => {
-            content.sourceContentOriginal = wikipediaRawContent[key]['extract']
-        })
+      Object.keys(wikipediaRawContent).forEach((key) => {
+        content.sourceContentOriginal = wikipediaRawContent[key]['extract']
+      })
 
     } catch (error) {
-        console.log(error)
+      console.log(error)
     }
   }
 
@@ -77,7 +62,7 @@ async function robot(content) {
   }
 
   function removeDatesInParentheses(text) {
-    return text.replace(/\((?:\([^()]*\)|[^()])*\)/gm, '').replace(/  /g,' ')
+    return text.replace(/\((?:\([^()]*\)|[^()])*\)/gm, '').replace(/  /g, ' ')
   }
 
   function breakContentIntoSentences(content) {
