@@ -1,30 +1,43 @@
-const algorithmia = require('algorithmia')
-const algorithmiaApiKey = require('../credentials/algorithmia.json').apiKey
+const fetch = require('node-fetch')
+
 const sentenceBoundaryDetection = require('sbd')
 
 const watsonApiKey = require('../credentials/watson-nlu.json').apikey
 const NaturalLanguageUnderstandingV1 = require('watson-developer-cloud/natural-language-understanding/v1.js')
- 
-var nlu = new NaturalLanguageUnderstandingV1({
+
+const nlu = new NaturalLanguageUnderstandingV1({
   iam_apikey: watsonApiKey,
   version: '2018-04-05',
   url: 'https://gateway.watsonplatform.net/natural-language-understanding/api/'
 })
 
-async function robot(content) {
+const state = require('./state.js')
+
+async function robot() {
+  const content = state.load()
+
   await fetchContentFromWikipedia(content)
   sanitizeContent(content)
   breakContentIntoSentences(content)
   limitMaximumSentences(content)
   await fetchKeywordsOfAllSentences(content)
 
-  async function fetchContentFromWikipedia(content) {
-    const algorithmiaAuthenticated = algorithmia(algorithmiaApiKey)
-    const wikipediaAlgorithm = algorithmiaAuthenticated.algo('web/WikipediaParser/0.1.2')
-    const wikipediaResponse = await wikipediaAlgorithm.pipe(content.searchTerm)
-    const wikipediaContent = wikipediaResponse.get()
+  state.save(content)
 
-    content.sourceContentOriginal = wikipediaContent.content
+  async function fetchContentFromWikipedia(content) {
+    try {
+      const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=true&explaintext&titles=${encodeURIComponent(content.searchTerm)}&format=json`)
+      const wikipediaRawResponse = await response.json()
+
+      const wikipediaRawContent = wikipediaRawResponse.query.pages
+
+      Object.keys(wikipediaRawContent).forEach((key) => {
+        content.sourceContentOriginal = wikipediaRawContent[key]['extract']
+      })
+
+    } catch (error) {
+      console.log(error)
+    }
   }
 
   function sanitizeContent(content) {
@@ -49,7 +62,7 @@ async function robot(content) {
   }
 
   function removeDatesInParentheses(text) {
-    return text.replace(/\((?:\([^()]*\)|[^()])*\)/gm, '').replace(/  /g,' ')
+    return text.replace(/\((?:\([^()]*\)|[^()])*\)/gm, '').replace(/  /g, ' ')
   }
 
   function breakContentIntoSentences(content) {
