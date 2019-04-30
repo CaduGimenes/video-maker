@@ -1,0 +1,26 @@
+ffmpeg -i 1-converted.jpg -i 1-sentence.png -filter_complex "[0:v][1:v] overlay=(1920-1920)/2:(1080-1080)/2:enable='between(t,0,20)'" -pix_fmt yuv420p -c:a copy output.jpg
+
+ ffmpeg -y -loop 1 -i 1-converted.jpg -i 1-sentence.png -filter_complex "[0:v]setpts=PTS-STARTPTS[V1]; [1:v]setpts=PTS-STARTPTS, scale=1000:452[V2]; [V1][V2]overlay=shortest=1:x=550:y=300" out.mp4  
+
+#CRIA VIDEOS
+ffmpeg -y -framerate 1/5 -i %d-converted.jpg -i Way_Out_West.mp3 -shortest -r 30 Project.mp4
+#CRIA VIDEOS
+
+
+ffmpeg -y 
+  -i foo.mp4 -i foo.jpg -i bar.jpg [...put more pics here...]
+  -filter_complex "
+      [0:v][1:v] overlay=25:25:enable='between(t,0,1)' [tmp];
+      [tmp][2:v] overlay=25:25:enable='between(t,1,2)' [tmp]
+      ...continue the same way...
+  " 
+bar.mp4
+
+ffmpeg -y -i Project.mp4 -i 1-sentence.png -i 2-sentence.png -i 3-sentence.png -i 4-sentence.png -i 5-sentence.png -filter_complex "[0:v]overlay=25:25:enable='between(t,0,1)'[v0];[1:v]overlay=25:25:enable='between(t,1,2)'[v1];[2:v]overlay=25:25:enable='between(t,2,3)'[v2];[3:v]overlay=25:25:enable='between(t,3,4)'[v3];[4:v]overlay=25:25:enable='between(t,4,5)'[v4];" final.mp4
+
+ffmpeg -i Project.mp4 -pattern_type glob -framerate 1 -i "*.png" \
+-filter_complex overlay output.mp4
+
+#Adiciona os textos das imagens
+ffmpeg -y -i Project.mp4 -i 0-sentence.png -i 1-sentence.png -filter_complex \
+"[0:v][1:v] overlay=10:10:enable='between(t,1,5)' [tmp]; [tmp][2:v] overlay=20:20:enable='between(t,5,10)'" output.mp4
